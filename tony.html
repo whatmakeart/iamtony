@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Face Tracking Example</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden; /* Hide scrollbars */
+      width: 100%;
+      height: 100%;
+    }
+    /* Make the canvas fill the entire screen */
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- p5.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
+  <!-- ml5.js library (which uses face-api under the hood) -->
+  <script src="https://cdn.jsdelivr.net/npm/ml5@0.12.2/dist/ml5.min.js"></script>
+
+  <script>
+    let video;
+    let faceapi;
+    let detections = [];
+
+    // Configure ml5 Face API
+    const detectionOptions = {
+      withLandmarks: true,
+      withDescriptors: false
+    };
+
+    function setup() {
+      // Create full-window canvas
+      createCanvas(windowWidth, windowHeight);
+
+      // Start video capture with the front-facing (selfie) camera
+      video =
