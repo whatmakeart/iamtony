@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Face Tracking Example</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden; /* Hide scrollbars */
+      width: 100%;
+      height: 100%;
+    }
+    /* Make the canvas fill the entire screen */
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- p5.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
+  <!-- ml5.js library (which uses face-api under the hood) -->
+  <script src="https://cdn.jsdelivr.net/npm/ml5@0.12.2/dist/ml5.min.js"></script>
+
+  <script>
+    let video;
+    let faceapi;
+    let detections = [];
+
+    // Configure ml5 Face API
+    const detectionOptions = {
+      withLandmarks: true,
+      withDescriptors: false
+    };
+
+    function setup() {
+      // Create full-window canvas
+      createCanvas(windowWidth, windowHeight);
+
+      // Start video capture with the front-facing (selfie) camera
+      video = createCapture({
+        video: {
+          facingMode: "user"
+        },
+        audio: false
+      });
+      video.size(width, height);
+      video.hide(); // Hide the HTML video element (we'll draw it to canvas)
+
+      // Initialize face API with the video
+      faceapi = ml5.faceApi(video, detectionOptions, modelReady);
+    }
+
+    function modelReady() {
+      console.log("Face API model loaded!");
+      // Start detecting faces continuously
+      faceapi.detect(gotResults);
+    }
+
+    function gotResults(err, result) {
+      if (err) {
+        console.error(err);
+        return;
+      }
+      detections = result;
+      // Keep detecting faces
+      faceapi.detect(gotResults);
+    }
+
+    function draw() {
+      // Draw the video to the background
+      background(0);
+      image(video, 0, 0, width, height);
+
+      // If we have at least one face detected
+      if (detections.length > 0) {
+        // We’ll use the first detection
+        let { alignedRect } = detections[0];
+        let { x, y, width: w, height: h } = alignedRect._box;
+
+        // Draw text: Pink fill, yellow outline
+        fill("pink");
+        stroke("yellow");
+        strokeWeight(4);
+        textSize(40);
+        textAlign(CENTER);
+
+        // Roughly place on the forehead (somewhere in the top portion of the bounding box)
+        let foreheadY = y + 0.2 * h;
+        text("I am Tony", x + w / 2, foreheadY);
+      }
+    }
+
+    // Adjust canvas if the window is resized
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+      video.size(windowWidth, windowHeight);
+    }
+  </script>
+</body>
+</html>
