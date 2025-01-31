@@ -78,12 +78,12 @@
       };
 
       // Start video capture with the selected camera
-      video = createCapture(videoOptions);
-      video.size(width, height);
-      video.hide(); // Hide the HTML video element (we'll draw it to canvas)
-
-      // Initialize face API with the video
-      faceapi = ml5.faceApi(video, detectionOptions, modelReady);
+      video = createCapture(videoOptions, function() {
+        video.size(width, height);
+        video.hide(); // Hide the HTML video element (we'll draw it to canvas)
+        // Initialize face API with the video
+        faceapi = ml5.faceApi(video, detectionOptions, modelReady);
+      });
     }
 
     function modelReady() {
