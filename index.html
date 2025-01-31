@@ -11,9 +11,20 @@
       width: 100%;
       height: 100%;
     }
-    /* Make the canvas fill the entire screen */
     canvas {
       display: block;
+    }
+    #switchCameraButton {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 10px 20px;
+      background-color: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -23,6 +34,8 @@
   <!-- ml5.js library (which uses face-api under the hood) -->
   <script src="https://cdn.jsdelivr.net/npm/ml5@0.12.2/dist/ml5.min.js"></script>
 
+  <button id="switchCameraButton">Switch Camera</button>
+
   <script>
     let video;
     let faceapi;
@@ -30,6 +43,7 @@
     let mustacheImg;
     let sunglassesImg;
     let rainbowColorIndex = 0;
+    let isFrontCamera = true; // Track camera state (front or back)
 
     // Configure ml5 Face API
     const detectionOptions = {
@@ -39,21 +53,32 @@
 
     function preload() {
       // Load mustache and sunglasses images
-      mustacheImg = loadImage('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Mustache_Clipart_1.svg/1024px-Mustache_Clipart_1.svg.png'); // A better mustache image
-      sunglassesImg = loadImage('https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Sunglasses_Transparent_Background.png/620px-Sunglasses_Transparent_Background.png'); // A more realistic sunglasses image
+      mustacheImg = loadImage('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Mustache_Clipart_1.svg/1024px-Mustache_Clipart_1.svg.png');
+      sunglassesImg = loadImage('https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Sunglasses_Transparent_Background.png/620px-Sunglasses_Transparent_Background.png');
     }
 
     function setup() {
       // Create full-window canvas
       createCanvas(windowWidth, windowHeight);
 
-      // Start video capture with the front-facing (selfie) camera
-      video = createCapture({
+      // Set up button click event to switch cameras
+      const switchCameraButton = document.getElementById('switchCameraButton');
+      switchCameraButton.addEventListener('click', switchCamera);
+
+      // Start video capture based on device type
+      startVideo();
+    }
+
+    function startVideo() {
+      const videoOptions = {
         video: {
-          facingMode: "user"
+          facingMode: isFrontCamera ? "user" : "environment"
         },
         audio: false
-      });
+      };
+
+      // Start video capture with the selected camera
+      video = createCapture(videoOptions);
       video.size(width, height);
       video.hide(); // Hide the HTML video element (we'll draw it to canvas)
 
@@ -75,6 +100,13 @@
       detections = result;
       // Keep detecting faces
       faceapi.detect(gotResults);
+    }
+
+    function switchCamera() {
+      // Switch between front and back camera
+      isFrontCamera = !isFrontCamera;
+      video.remove(); // Remove the previous video element
+      startVideo(); // Restart the video capture with the new camera
     }
 
     function draw() {
