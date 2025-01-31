@@ -27,12 +27,21 @@
     let video;
     let faceapi;
     let detections = [];
+    let mustacheImg;
+    let sunglassesImg;
+    let rainbowColorIndex = 0;
 
     // Configure ml5 Face API
     const detectionOptions = {
       withLandmarks: true,
       withDescriptors: false
     };
+
+    function preload() {
+      // Load mustache and sunglasses images
+      mustacheImg = loadImage('https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Mustache_Clipart_1.svg/1024px-Mustache_Clipart_1.svg.png'); // A better mustache image
+      sunglassesImg = loadImage('https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Sunglasses_Transparent_Background.png/620px-Sunglasses_Transparent_Background.png'); // A more realistic sunglasses image
+    }
 
     function setup() {
       // Create full-window canvas
@@ -75,9 +84,15 @@
 
       // If we have at least one face detected
       if (detections.length > 0) {
-        // We’ll use the first detection
+        // First face (Tony's face)
         let { alignedRect } = detections[0];
         let { x, y, width: w, height: h } = alignedRect._box;
+
+        // Rainbow outline animation
+        noFill();
+        strokeWeight(10);
+        stroke(lerpColor(color(255, 0, 0), color(255, 255, 0), rainbowColorIndex));
+        rect(x, y, w, h); // Draw rectangle around face
 
         // Draw text: Pink fill, yellow outline
         fill("pink");
@@ -89,7 +104,41 @@
         // Roughly place on the forehead (somewhere in the top portion of the bounding box)
         let foreheadY = y + 0.2 * h;
         text("I am Tony", x + w / 2, foreheadY);
+
+        // Add a better-shaped mustache under the nose of the first face
+        let mustacheWidth = w * 0.6;
+        let mustacheHeight = h * 0.12;
+        image(mustacheImg, x + w / 6, y + h * 0.75, mustacheWidth, mustacheHeight);
       }
+
+      // If we have a second face detected
+      if (detections.length > 1) {
+        let { alignedRect } = detections[1];
+        let { x, y, width: w, height: h } = alignedRect._box;
+
+        // Rainbow outline animation for the second face
+        noFill();
+        strokeWeight(10);
+        stroke(lerpColor(color(0, 255, 0), color(0, 0, 255), rainbowColorIndex));
+        rect(x, y, w, h); // Draw rectangle around second face
+
+        // Draw more realistic sunglasses on the second face
+        let glassesWidth = w * 0.8;
+        let glassesHeight = h * 0.25;
+        image(sunglassesImg, x + w / 6, y + h * 0.2, glassesWidth, glassesHeight);
+
+        // Draw text for the second face
+        fill("cyan");
+        stroke("red");
+        strokeWeight(10);
+        textSize(50);
+        textAlign(CENTER);
+        text("Not Tony", x + w / 2, y + h * 0.1);
+      }
+
+      // Increment rainbow color index to create the effect
+      rainbowColorIndex += 0.01;
+      if (rainbowColorIndex > 1) rainbowColorIndex = 0; // Loop back to 0
     }
 
     // Adjust canvas if the window is resized
