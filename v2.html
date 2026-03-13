@@ -1,0 +1,801 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>System Drift — Generative study inspired by Tony Ingrisano</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <style>
+    :root {
+      --bg: #0c1118;
+      --panel: rgba(12, 17, 24, 0.74);
+      --line: rgba(255,255,255,0.14);
+      --text: #eef3f7;
+      --muted: rgba(238,243,247,0.72);
+      --accent: #b8f2e6;
+    }* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+}
+
+canvas {
+  display: block;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hud {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 10;
+  width: min(380px, calc(100vw - 36px));
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.28);
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.hud.hidden { opacity: 0; }
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: clamp(22px, 3.2vw, 30px);
+  line-height: 1.04;
+  font-weight: 700;
+}
+
+.sub {
+  margin: 0 0 12px;
+  color: var(--muted);
+  line-height: 1.42;
+  font-size: 13.5px;
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.03);
+}
+
+.footer {
+  margin-top: 12px;
+  font-size: 11.5px;
+  color: rgba(238,243,247,0.58);
+  line-height: 1.35;
+}
+
+.corner {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 10;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(12, 17, 24, 0.62);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.flash {
+  position: fixed;
+  inset: 0;
+  background: white;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9;
+  transition: opacity 160ms ease;
+}
+
+.flash.on { opacity: 0.06; }
+
+@media (max-width: 680px) {
+  .hud {
+    left: 10px;
+    right: 10px;
+    top: auto;
+    bottom: 10px;
+    width: auto;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(12, 17, 24, 0.52);
+  }
+  .hud .sub,
+  .hud .meta,
+  .hud .footer {
+    display: none;
+  }
+  .eyebrow {
+    margin-bottom: 4px;
+    font-size: 10px;
+  }
+  h1 {
+    font-size: 18px;
+  }
+  .corner {
+    display: none;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <div id="flash" class="flash"></div>
+  <div id="hud" class="hud">
+    <div class="eyebrow">Generative study</div>
+    <h1>System Drift</h1>
+    <p class="sub">
+      Click or tap anywhere to generate a new composition. This is an original p5.js system inspired by recurring traits visible across Tony Ingrisano’s work: cartographic overlays, runway and transit geometry, layered grids, cut-paper textures, translucent color, plus newer mode families that pull from his tent and tiger series.
+    </p>
+    <div class="meta">
+      <div class="pill">Seed: <span id="seedLabel">—</span></div>
+      <div class="pill">Mode: <span id="modeLabel">—</span></div>
+      <div class="pill">Palette: <span id="paletteLabel">—</span></div>
+      <div class="pill">Density: <span id="densityLabel">—</span></div>
+    </div>
+    <div class="footer">
+      Keys: <strong>space</strong> autoplay, <strong>s</strong> save PNG, <strong>h</strong> hide panel, <strong>1–7</strong> switch modes.
+    </div>
+  </div>
+  <div class="corner">click = regenerate</div>  <script>
+    let seed = 1;
+    let autoplay = false;
+    let lastAuto = 0;
+    let baseLayer, textureLayer, paintLayer, lineLayer, accentLayer;
+    let currentMode = 0;
+    let currentPalette = null;
+    let densityLabel = '';
+
+    const modeNames = [
+      'Transit Collision',
+      'Runway Weave',
+      'Architectural Drift',
+      'Signal Field',
+      'Cartographic Bloom',
+      'Tent Chorus',
+      'Tiger Archive'
+    ];
+
+    const palettes = [
+      {
+        name: 'Cyan / Coral / Sand',
+        bg: '#f4efe6',
+        paper: '#efe7da',
+        dark: '#23395b',
+        lines: ['#57c4e5', '#2e86ab', '#ef8354', '#d1495b', '#8ac6a9'],
+        blocks: ['#ffd166', '#f4a261', '#9ad1d4', '#d8e2dc', '#7b9acc']
+      },
+      {
+        name: 'Blueprint Pastel',
+        bg: '#f5f7fb',
+        paper: '#ecf0f7',
+        dark: '#2b4162',
+        lines: ['#5fa8d3', '#62b6cb', '#b8c0ff', '#c490d1', '#83c5be'],
+        blocks: ['#d8f3dc', '#cddafd', '#e9d8fd', '#bde0fe', '#f7cad0']
+      },
+      {
+        name: 'Electric Grid',
+        bg: '#f6f3ee',
+        paper: '#eee5db',
+        dark: '#32161f',
+        lines: ['#59f8e8', '#0d3b66', '#8d99ae', '#7f5539', '#6d597a'],
+        blocks: ['#e09f7d', '#b56576', '#a5be00', '#e3d5ca', '#6c9a8b']
+      },
+      {
+        name: 'Metro Signal',
+        bg: '#fbfaf6',
+        paper: '#f1ede4',
+        dark: '#17324d',
+        lines: ['#0f4c5c', '#2c7da0', '#ff7d00', '#d62839', '#7fb069'],
+        blocks: ['#ffb703', '#a8dadc', '#e76f51', '#cdb4db', '#bde0fe']
+      },
+      {
+        name: 'Mylar Night',
+        bg: '#dde6ef',
+        paper: '#d6dfe8',
+        dark: '#13293d',
+        lines: ['#4ea8de', '#5390d9', '#80ed99', '#c77dff', '#ef476f'],
+        blocks: ['#caf0f8', '#b8c0ff', '#ffcad4', '#caffbf', '#fde4cf']
+      }
+    ];
+
+    function setup() {
+      pixelDensity(Math.min(2, window.devicePixelRatio || 1));
+      createCanvas(windowWidth, windowHeight);
+      noLoop();
+      generateNew(true);
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+      generateNew(false);
+    }
+
+    function draw() {
+      image(baseLayer, 0, 0);
+      image(textureLayer, 0, 0);
+      image(paintLayer, 0, 0);
+      image(lineLayer, 0, 0);
+      image(accentLayer, 0, 0);
+
+      if (autoplay && millis() - lastAuto > 2200) {
+        generateNew(true);
+      }
+    }
+
+    function pick(arr) {
+      return arr[floor(random(arr.length))];
+    }
+
+    function alphaColor(hex, a) {
+      const c = color(hex);
+      c.setAlpha(a);
+      return c;
+    }
+
+    function lerpPt(a, b, t) {
+      return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) };
+    }
+
+    function generateNew(randomizeMode = true) {
+      seed = floor(random(1, 9999999));
+      randomSeed(seed);
+      noiseSeed(seed);
+
+      if (randomizeMode) currentMode = floor(random(modeNames.length));
+      currentPalette = pick(palettes);
+      densityLabel = pick(['Sparse', 'Balanced', 'Dense', 'Overloaded']);
+
+      baseLayer = createGraphics(width, height);
+      textureLayer = createGraphics(width, height);
+      paintLayer = createGraphics(width, height);
+      lineLayer = createGraphics(width, height);
+      accentLayer = createGraphics(width, height);
+
+      [baseLayer, textureLayer, paintLayer, lineLayer, accentLayer].forEach(g => {
+        g.pixelDensity(1);
+        g.noSmooth();
+      });
+
+      buildBackground(baseLayer, currentPalette);
+      buildPaperTexture(textureLayer, currentPalette);
+      buildCollageFields(paintLayer, currentPalette, currentMode);
+      buildLineSystems(lineLayer, currentPalette, currentMode);
+      buildAccents(accentLayer, currentPalette, currentMode);
+      updateHud();
+      pulseFlash();
+      lastAuto = millis();
+      redraw();
+    }
+
+    function buildBackground(g, pal) {
+      g.background(pal.bg);
+      g.noStroke();
+
+      for (let y = 0; y < height; y += 3) {
+        const t = y / max(1, height - 1);
+        const c = lerpColor(color(pal.bg), color(pal.paper), pow(t, 0.8));
+        c.setAlpha(85);
+        g.fill(c);
+        g.rect(0, y, width, 4);
+      }
+
+      for (let i = 0; i < 7; i++) {
+        g.fill(alphaColor(pick(pal.blocks), random(14, 32)));
+        g.push();
+        g.translate(random(width), random(height));
+        g.rotate(random(-0.6, 0.6));
+        g.rectMode(CENTER);
+        g.rect(0, 0, random(width * 0.16, width * 0.38), random(height * 0.05, height * 0.14));
+        g.pop();
+      }
+
+      for (let i = 0; i < 4; i++) {
+        g.fill(alphaColor(pal.paper, random(22, 38)));
+        g.ellipse(random(width), random(height), random(width * 0.2, width * 0.65), random(height * 0.12, height * 0.4));
+      }
+    }
+
+    function buildPaperTexture(g, pal) {
+      g.clear();
+      const grainCount = floor(width * height * 0.0012);
+      g.strokeWeight(1);
+
+      for (let i = 0; i < grainCount; i++) {
+        g.stroke(alphaColor(pal.dark, random(5, 18)));
+        const x = random(width);
+        const y = random(height);
+        g.point(x, y);
+      }
+
+      for (let i = 0; i < 2400; i++) {
+        g.stroke(alphaColor(pick(pal.lines), random(5, 12)));
+        const x = random(width);
+        const y = random(height);
+        const len = random(2, 14);
+        const ang = random([0, HALF_PI, random(-0.8, 0.8)]);
+        g.line(x, y, x + cos(ang) * len, y + sin(ang) * len);
+      }
+
+      g.noStroke();
+      for (let i = 0; i < 120; i++) {
+        g.fill(alphaColor(pick(pal.blocks), random(6, 14)));
+        g.push();
+        g.translate(random(width), random(height));
+        g.rotate(random(TWO_PI));
+        g.rect(0, 0, random(8, 42), random(3, 14));
+        g.pop();
+      }
+    }
+
+    function buildCollageFields(g, pal, mode) {
+      g.clear();
+      g.noStroke();
+
+      const stripCount = [7, 12, 9, 18, 10, 14, 8][mode];
+      for (let i = 0; i < stripCount; i++) {
+        g.push();
+        g.translate(random(width), random(height));
+        g.rotate(random(-1.1, 1.1));
+        g.fill(alphaColor(pick(pal.blocks), random(38, 84)));
+        g.rectMode(CENTER);
+        g.rect(0, 0, random(width * 0.14, width * 0.42), random(18, height * 0.1));
+        g.pop();
+      }
+
+      const shardCount = [18, 12, 24, 16, 20, 10, 16][mode];
+      for (let i = 0; i < shardCount; i++) {
+        drawShard(g, random(width), random(height), random(40, 180), random(24, 110), pick(pal.blocks), random(30, 90));
+      }
+
+      if (mode === 1 || mode === 3) {
+        for (let i = 0; i < 8; i++) {
+          drawRunwayBand(g, random(width), random(height), random(width * 0.24, width * 0.55), random(20, 42), random(-0.85, 0.85), pick(pal.blocks), random(24, 70));
+        }
+      }
+
+      if (mode === 0 || mode === 4) {
+        for (let i = 0; i < 8; i++) {
+          drawSoftBloom(g, random(width), random(height), random(90, 220), random(0.25, 0.65), pick(pal.blocks));
+        }
+      }
+
+      if (mode === 2) {
+        g.stroke(alphaColor(pal.dark, 20));
+        g.strokeWeight(1.2);
+        for (let i = 0; i < 14; i++) {
+          const x = random(width);
+          g.line(x, 0, x + random(-80, 80), height);
+        }
+      }
+
+      if (mode === 5) {
+        drawTentField(g, pal);
+      }
+
+      if (mode === 6) {
+        drawTigerField(g);
+      }
+    }
+
+    function drawShard(g, x, y, w, h, fillHex, a) {
+      g.push();
+      g.translate(x, y);
+      g.rotate(random(TWO_PI));
+      g.fill(alphaColor(fillHex, a));
+      g.beginShape();
+      g.vertex(-w * 0.45, -h * 0.2);
+      g.vertex(-w * 0.08, -h * 0.5);
+      g.vertex(w * 0.5, -h * 0.16);
+      g.vertex(w * 0.24, h * 0.46);
+      g.vertex(-w * 0.4, h * 0.28);
+      g.endShape(CLOSE);
+      g.pop();
+    }
+
+    function drawRunwayBand(g, x, y, len, thick, ang, fillHex, a) {
+      g.push();
+      g.translate(x, y);
+      g.rotate(ang);
+      g.rectMode(CENTER);
+      g.noStroke();
+      g.fill(alphaColor(fillHex, a));
+      g.rect(0, 0, len, thick, thick * 0.2);
+
+      const notchCount = floor(random(5, 12));
+      for (let i = 0; i < notchCount; i++) {
+        const t = map(i, 0, notchCount - 1, -len * 0.42, len * 0.42);
+        g.fill(alphaColor('#ffffff', random(35, 90)));
+        g.rect(t, 0, len * 0.035, thick * random(0.3, 0.9), 2);
+      }
+      g.pop();
+    }
+
+    function drawSoftBloom(g, x, y, r, wobble, fillHex) {
+      g.push();
+      g.translate(x, y);
+      g.fill(alphaColor(fillHex, random(14, 32)));
+      g.beginShape();
+      const steps = 18;
+      for (let i = 0; i <= steps; i++) {
+        const a = map(i, 0, steps, 0, TWO_PI);
+        const rad = r * (0.6 + noise(cos(a) * wobble + seed * 0.001, sin(a) * wobble + seed * 0.001) * 0.7);
+        g.curveVertex(cos(a) * rad, sin(a) * rad * random(0.55, 1.05));
+      }
+      g.endShape(CLOSE);
+      g.pop();
+    }
+
+    function drawTentField(g, pal) {
+      const rows = floor(random(2, 4));
+      for (let row = 0; row < rows; row++) {
+        const y = map(row, 0, max(1, rows - 1), height * 0.32, height * 0.78) + random(-24, 24);
+        const cols = floor(random(3, 7));
+        for (let i = 0; i < cols; i++) {
+          const x = map(i, 0, max(1, cols - 1), width * 0.14, width * 0.86) + random(-28, 28);
+          drawTentForm(g, x, y, random(90, 200), random(70, 150), pick(pal.blocks), pick(pal.lines), pal.dark);
+        }
+      }
+    }
+
+    function drawTentForm(g, x, y, w, h, fillHex, lineHex, darkHex) {
+      g.push();
+      g.translate(x, y);
+      g.rotate(random(-0.08, 0.08));
+
+      g.noStroke();
+      g.fill(alphaColor(fillHex, random(18, 34)));
+      g.rectMode(CENTER);
+      g.rect(0, -h * 0.24, w * 0.9, h * 1.2);
+
+      g.stroke(alphaColor(lineHex, random(95, 170)));
+      g.strokeWeight(random(1.2, 2.2));
+      g.fill(alphaColor(fillHex, random(58, 120)));
+      g.beginShape();
+      g.vertex(-w * 0.5, 0);
+      g.vertex(-w * 0.1, -h * random(0.82, 1.0));
+      g.vertex(w * 0.5, 0);
+      g.vertex(w * 0.34, 0);
+      g.vertex(0, -h * random(0.62, 0.82));
+      g.vertex(-w * 0.34, 0);
+      g.endShape(CLOSE);
+
+      g.stroke(alphaColor(darkHex, random(30, 75)));
+      g.line(-w * 0.5, 0, w * 0.5, 0);
+      g.line(-w * 0.1, -h * 0.9, 0, -h * 0.72);
+      g.line(0, -h * 0.72, w * 0.5, 0);
+      g.line(0, -h * 0.72, 0, 0);
+
+      for (let i = 0; i < 5; i++) {
+        const yy = map(i, 0, 4, -h * 0.75, -h * 0.08);
+        g.stroke(alphaColor(pick([fillHex, lineHex, darkHex]), random(18, 42)));
+        g.line(-w * 0.22, yy, w * 0.22, yy + random(-3, 3));
+      }
+
+      g.stroke(alphaColor(lineHex, random(20, 50)));
+      g.line(-w * 0.38, 0, -w * 0.55, h * 0.12);
+      g.line(w * 0.38, 0, w * 0.55, h * 0.12);
+      g.pop();
+    }
+
+    function drawTigerField(g) {
+      const tigerPalette = ['#f28c28', '#ffb347', '#1b1b1b', '#f3e0b5', '#c95b2b'];
+
+      for (let i = 0; i < 18; i++) {
+        g.push();
+        g.translate(random(width), random(height));
+        g.rotate(random(-0.9, 0.9));
+        g.noStroke();
+        g.fill(alphaColor(pick(tigerPalette), random(18, 52)));
+        g.rectMode(CENTER);
+        g.rect(0, 0, random(80, 260), random(10, 28), 10);
+        g.pop();
+      }
+
+      const tigerCount = floor(random(2, 5));
+      for (let i = 0; i < tigerCount; i++) {
+        drawTigerGlyph(g, random(width * 0.2, width * 0.8), random(height * 0.24, height * 0.76), random(110, 240), tigerPalette);
+      }
+    }
+
+    function drawTigerGlyph(g, x, y, s, tigerPalette) {
+      g.push();
+      g.translate(x, y);
+      g.rotate(random(-0.12, 0.12));
+
+      g.noStroke();
+      g.fill(alphaColor('#f3e0b5', random(100, 155)));
+      g.ellipse(0, 0, s * 0.78, s * 0.7);
+
+      g.fill(alphaColor('#f28c28', random(80, 145)));
+      g.ellipse(-s * 0.22, -s * 0.24, s * 0.22, s * 0.22);
+      g.ellipse(s * 0.22, -s * 0.24, s * 0.22, s * 0.22);
+      g.ellipse(0, 0, s * 0.7, s * 0.62);
+
+      g.fill(alphaColor('#1b1b1b', random(110, 180)));
+      for (let i = -2; i <= 2; i++) {
+        const xx = i * s * 0.08;
+        g.rect(xx, -s * 0.18, s * 0.035, s * random(0.15, 0.26), 6);
+      }
+      g.push();
+      g.translate(-s * 0.16, -s * 0.02);
+      g.rotate(-0.45);
+      g.rect(0, 0, s * 0.04, s * 0.18, 6);
+      g.pop();
+      g.push();
+      g.translate(s * 0.16, -s * 0.02);
+      g.rotate(0.45);
+      g.rect(0, 0, s * 0.04, s * 0.18, 6);
+      g.pop();
+
+      g.fill(alphaColor('#ffffff', 190));
+      g.ellipse(-s * 0.15, -s * 0.02, s * 0.16, s * 0.12);
+      g.ellipse(s * 0.15, -s * 0.02, s * 0.16, s * 0.12);
+      g.fill(alphaColor('#1b1b1b', 220));
+      g.ellipse(-s * 0.15, -s * 0.02, s * 0.055, s * 0.055);
+      g.ellipse(s * 0.15, -s * 0.02, s * 0.055, s * 0.055);
+
+      g.fill(alphaColor('#c95b2b', 180));
+      g.triangle(0, s * 0.06, -s * 0.07, s * 0.16, s * 0.07, s * 0.16);
+
+      g.stroke(alphaColor('#1b1b1b', 130));
+      g.strokeWeight(1.2);
+      for (let i = 0; i < 3; i++) {
+        const yy = s * (0.14 + i * 0.045);
+        g.line(-s * 0.08, yy, -s * 0.26, yy + random(-10, 10));
+        g.line(s * 0.08, yy, s * 0.26, yy + random(-10, 10));
+      }
+      g.pop();
+    }
+
+    function buildLineSystems(g, pal, mode) {
+      g.clear();
+      g.blendMode(BLEND);
+
+      const gridSets = [2, 1, 3, 2, 2, 1, 1][mode];
+      for (let i = 0; i < gridSets; i++) drawGridField(g, pal, mode, i);
+
+      const routeCount = [24, 14, 18, 22, 26, 12, 18][mode];
+      for (let i = 0; i < routeCount; i++) drawRoute(g, pal, mode);
+
+      const arcCount = [10, 6, 8, 10, 12, 6, 8][mode];
+      for (let i = 0; i < arcCount; i++) drawArcSystem(g, pal, mode);
+
+      const nodeCount = [80, 42, 56, 72, 90, 34, 58][mode];
+      for (let i = 0; i < nodeCount; i++) {
+        const c = alphaColor(pick(pal.lines), random(90, 170));
+        g.noStroke();
+        g.fill(c);
+        g.circle(random(width), random(height), random(1.4, 5.2));
+      }
+    }
+
+    function drawGridField(g, pal, mode, idx) {
+      g.push();
+      g.translate(random(-width * 0.12, width * 0.12), random(-height * 0.12, height * 0.12));
+      g.rotate(random([-0.22, -0.12, 0, 0.12, 0.22, random(-0.4, 0.4)]));
+      g.stroke(alphaColor(pick(pal.lines), random(22, 60)));
+      g.strokeWeight(random(0.8, 2.1));
+
+      const sx = random(28, 90);
+      const sy = random(22, 80);
+      for (let x = -width * 0.2; x < width * 1.2; x += sx) g.line(x, -height * 0.2, x, height * 1.2);
+      for (let y = -height * 0.2; y < height * 1.2; y += sy) g.line(-width * 0.2, y, width * 1.2, y);
+
+      if (mode === 2 || idx === 0) {
+        g.stroke(alphaColor(pal.dark, random(26, 54)));
+        for (let x = -width * 0.1; x < width * 1.1; x += sx * random(2.5, 4.2)) {
+          g.line(x, -height * 0.1, x + random(-100, 100), height * 1.1);
+        }
+      }
+      g.pop();
+    }
+
+    function drawRoute(g, pal, mode) {
+      const steps = floor(random(5, 14));
+      let p = {
+        x: random(-width * 0.05, width * 1.05),
+        y: random(-height * 0.05, height * 1.05)
+      };
+
+      const orthogonalBias = mode === 2 ? 0.8 : mode === 5 ? 0.68 : mode === 0 ? 0.55 : mode === 6 ? 0.2 : 0.35;
+      g.noFill();
+      g.stroke(alphaColor(pick(pal.lines), random(70, 175)));
+      g.strokeWeight(random(0.9, 3.8));
+      g.beginShape();
+      g.vertex(p.x, p.y);
+
+      for (let i = 0; i < steps; i++) {
+        const axisMode = random() < orthogonalBias;
+        let a;
+        if (axisMode) {
+          a = pick([0, HALF_PI, PI, PI + HALF_PI, QUARTER_PI, PI + QUARTER_PI, PI - QUARTER_PI, TWO_PI - QUARTER_PI]);
+        } else {
+          a = random(TWO_PI);
+        }
+        const d = random(30, mode === 1 ? 210 : 160);
+        p = { x: p.x + cos(a) * d, y: p.y + sin(a) * d };
+        g.vertex(p.x, p.y);
+      }
+      g.endShape();
+
+      if (random() < 0.7) {
+        g.fill(alphaColor(pick(pal.blocks), random(50, 120)));
+        g.noStroke();
+        g.circle(p.x, p.y, random(5, 16));
+      }
+    }
+
+    function drawArcSystem(g, pal, mode) {
+      g.push();
+      const x = random(width);
+      const y = random(height);
+      g.translate(x, y);
+      g.rotate(random(TWO_PI));
+      g.noFill();
+      g.stroke(alphaColor(pick(pal.lines), random(40, 120)));
+      g.strokeWeight(random(0.9, 2.5));
+      const rings = floor(random(2, 6));
+      for (let i = 0; i < rings; i++) {
+        const w = random(40, mode === 4 ? 320 : 220) * (i + 1) * 0.45;
+        const h = random(30, 180) * (i + 1) * 0.45;
+        const start = random(TWO_PI);
+        const end = start + random(QUARTER_PI * 0.8, PI * 1.4);
+        g.arc(0, 0, w, h, start, end);
+      }
+      g.pop();
+    }
+
+    function buildAccents(g, pal, mode) {
+      g.clear();
+
+      if (mode === 3) {
+        for (let i = 0; i < 7; i++) {
+          g.push();
+          g.translate(random(width), random(height));
+          g.rotate(random([-0.45, -0.22, 0.22, 0.45]));
+          g.noStroke();
+          g.fill(alphaColor(pick(pal.lines), random(50, 90)));
+          const stripeH = random(10, 18);
+          for (let y = -70; y <= 70; y += stripeH * 1.5) {
+            g.rect(-150, y, 300, stripeH);
+          }
+          g.pop();
+        }
+      }
+
+      if (mode === 1) {
+        for (let i = 0; i < 5; i++) {
+          drawRunwayBand(g, random(width), random(height), random(width * 0.32, width * 0.65), random(12, 28), random(-0.9, 0.9), pick(pal.lines), random(36, 88));
+        }
+      }
+
+      if (mode === 5) {
+        g.stroke(alphaColor(pal.dark, 70));
+        g.strokeWeight(1.2);
+        for (let i = 0; i < 6; i++) {
+          const y = random(height * 0.2, height * 0.9);
+          g.line(random(width * 0.05, width * 0.2), y, random(width * 0.8, width * 0.95), y + random(-10, 10));
+        }
+      }
+
+      if (mode === 6) {
+        const tigerPalette = ['#f28c28', '#ffb347', '#1b1b1b', '#f3e0b5', '#c95b2b'];
+        for (let i = 0; i < 12; i++) {
+          g.noFill();
+          g.stroke(alphaColor(pick(tigerPalette), random(55, 110)));
+          g.strokeWeight(random(2, 5));
+          g.arc(random(width), random(height), random(50, 180), random(30, 120), random(TWO_PI), random(TWO_PI));
+        }
+      }
+
+      if (mode === 4 || random() < 0.55) {
+        const cx = random(width * 0.25, width * 0.75);
+        const cy = random(height * 0.25, height * 0.75);
+        g.stroke(alphaColor(pick(pal.lines), 140));
+        g.strokeWeight(random(1.3, 2.8));
+        for (let i = 0; i < 18; i++) {
+          const a = random(TWO_PI);
+          const d = random(80, min(width, height) * 0.28);
+          const ex = cx + cos(a) * d;
+          const ey = cy + sin(a) * d;
+          g.line(cx, cy, ex, ey);
+          g.noStroke();
+          g.fill(alphaColor(pick(pal.blocks), random(60, 120)));
+          g.circle(ex, ey, random(4, 12));
+          g.stroke(alphaColor(pick(pal.lines), 120));
+        }
+        g.noStroke();
+        g.fill(alphaColor(pick(pal.blocks), 130));
+        g.circle(cx, cy, random(18, 40));
+      }
+
+      g.noFill();
+      for (let i = 0; i < 3; i++) {
+        g.stroke(alphaColor(pal.dark, random(30, 70)));
+        g.strokeWeight(random(1.2, 2.6));
+        g.rect(random(-20, 40), random(-20, 40), width - random(20, 80), height - random(20, 80));
+      }
+
+      const vignette = g.drawingContext.createRadialGradient(width * 0.5, height * 0.5, 50, width * 0.5, height * 0.5, max(width, height) * 0.68);
+      vignette.addColorStop(0, 'rgba(255,255,255,0)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.10)');
+      g.drawingContext.fillStyle = vignette;
+      g.noStroke();
+      g.rect(0, 0, width, height);
+    }
+
+    function updateHud() {
+      document.getElementById('seedLabel').textContent = seed;
+      document.getElementById('modeLabel').textContent = modeNames[currentMode];
+      document.getElementById('paletteLabel').textContent = currentPalette.name;
+      document.getElementById('densityLabel').textContent = densityLabel;
+    }
+
+    function pulseFlash() {
+      const el = document.getElementById('flash');
+      el.classList.add('on');
+      setTimeout(() => el.classList.remove('on'), 120);
+    }
+
+    function mousePressed() {
+      generateNew(true);
+      return false;
+    }
+
+    function touchStarted() {
+      generateNew(true);
+      return false;
+    }
+
+    function keyPressed() {
+      if (key === ' ' ) {
+        autoplay = !autoplay;
+        if (autoplay) loop(); else noLoop();
+      }
+
+      if (key === 's' || key === 'S') {
+        saveCanvas(`system-drift-${seed}`, 'png');
+      }
+
+      if (key === 'h' || key === 'H') {
+        document.getElementById('hud').classList.toggle('hidden');
+      }
+
+      if (['1', '2', '3', '4', '5'].includes(key)) {
+        currentMode = int(key) - 1;
+        generateNew(false);
+      }
+    }
+  </script></body>
+</html>
