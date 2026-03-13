@@ -1,64 +1,76 @@
 <!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>System Drift — Generative study inspired by Tony Ingrisano</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Tony Ingrisano Generative Study</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
   <style>
     :root {
-      --bg: #0c1118;
-      --panel: rgba(12, 17, 24, 0.74);
+      --bg: #0b1016;
+      --panel: rgba(11, 16, 22, 0.66);
       --line: rgba(255,255,255,0.14);
       --text: #eef3f7;
       --muted: rgba(238,243,247,0.72);
-      --accent: #b8f2e6;
+      --accent: #9ce7da;
+      --safe-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
     }* { box-sizing: border-box; }
 html, body {
   margin: 0;
-  padding: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: var(--bg);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--text);
+  overscroll-behavior: none;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  touch-action: manipulation;
 }
 
 canvas {
   display: block;
-  cursor: pointer;
+  width: 100%;
+  height: 100%;
   touch-action: manipulation;
 }
 
 .hud {
   position: fixed;
-  top: 18px;
-  left: 18px;
-  z-index: 10;
-  width: min(380px, calc(100vw - 36px));
-  padding: 16px 18px;
+  top: 16px;
+  left: 16px;
+  z-index: 15;
+  width: min(430px, calc(100vw - 32px));
+  padding: 14px 16px;
   border-radius: 18px;
   background: var(--panel);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--line);
-  box-shadow: 0 18px 48px rgba(0,0,0,0.28);
-  pointer-events: none;
-  transition: opacity 180ms ease;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.28);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: auto;
 }
 
-.hud.hidden { opacity: 0; }
+.hud.hidden {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
 
 .eyebrow {
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--accent);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 h1 {
   margin: 0 0 8px;
-  font-size: clamp(22px, 3.2vw, 30px);
+  font-size: clamp(20px, 3vw, 30px);
   line-height: 1.04;
   font-weight: 700;
 }
@@ -83,28 +95,112 @@ h1 {
   border-radius: 999px;
   padding: 8px 10px;
   background: rgba(255,255,255,0.03);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .footer {
-  margin-top: 12px;
+  margin-top: 10px;
   font-size: 11.5px;
   color: rgba(238,243,247,0.58);
   line-height: 1.35;
 }
 
-.corner {
+.controls {
   position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 10;
+  left: 50%;
+  bottom: var(--safe-bottom);
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: min(760px, calc(100vw - 24px));
+  pointer-events: auto;
+}
+
+.ctrl-btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: rgba(11, 16, 22, 0.72);
+  color: var(--text);
+  backdrop-filter: blur(14px);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1;
+  min-height: 42px;
+  min-width: 42px;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+  touch-action: manipulation;
+}
+
+.ctrl-btn:active,
+.ctrl-btn.active {
+  transform: translateY(1px) scale(0.985);
+  background: rgba(156, 231, 218, 0.14);
+  border-color: rgba(156,231,218,0.4);
+}
+
+.mode-drawer {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + 56px);
+  transform: translateX(-50%);
+  z-index: 19;
+  width: min(760px, calc(100vw - 24px));
+  max-height: min(55vh, 420px);
+  overflow: auto;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgba(11, 16, 22, 0.82);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(18px);
+  display: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.mode-drawer.open { display: grid; }
+
+.mode-chip {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px;
+  min-height: 54px;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mode-chip.active {
+  border-color: rgba(156,231,218,0.45);
+  background: rgba(156,231,218,0.12);
+}
+
+.mini-note {
+  position: fixed;
+  right: 14px;
+  top: 14px;
+  z-index: 16;
   padding: 10px 12px;
   border-radius: 999px;
-  background: rgba(12, 17, 24, 0.62);
-  backdrop-filter: blur(14px);
   border: 1px solid var(--line);
-  font-size: 12px;
+  background: rgba(11, 16, 22, 0.56);
   color: var(--muted);
-  pointer-events: none;
+  backdrop-filter: blur(12px);
+  font-size: 12px;
+  pointer-events: auto;
 }
 
 .flash {
@@ -113,61 +209,75 @@ h1 {
   background: white;
   opacity: 0;
   pointer-events: none;
-  z-index: 9;
-  transition: opacity 160ms ease;
+  z-index: 8;
+  transition: opacity 140ms ease;
 }
 
-.flash.on { opacity: 0.06; }
+.flash.on { opacity: 0.055; }
 
-@media (max-width: 680px) {
+@media (max-width: 760px) {
   .hud {
+    top: 10px;
     left: 10px;
-    right: 10px;
-    top: auto;
-    bottom: 10px;
-    width: auto;
+    width: calc(100vw - 20px);
     padding: 10px 12px;
     border-radius: 14px;
-    background: rgba(12, 17, 24, 0.52);
   }
-  .hud .sub,
-  .hud .meta,
-  .hud .footer {
-    display: none;
+  .sub, .footer, .meta { display: none; }
+  .eyebrow { font-size: 10px; margin-bottom: 4px; }
+  h1 { font-size: 17px; margin-bottom: 4px; }
+  .mini-note {
+    top: auto;
+    right: 10px;
+    bottom: calc(var(--safe-bottom) + 116px);
+    font-size: 11px;
+    padding: 8px 10px;
   }
-  .eyebrow {
-    margin-bottom: 4px;
-    font-size: 10px;
+  .controls {
+    width: calc(100vw - 16px);
+    gap: 6px;
   }
-  h1 {
-    font-size: 18px;
+  .ctrl-btn {
+    flex: 1 1 calc(33.33% - 6px);
+    min-width: 0;
+    padding: 11px 10px;
+    font-size: 12px;
   }
-  .corner {
-    display: none;
+  .mode-drawer {
+    width: calc(100vw - 16px);
+    bottom: calc(var(--safe-bottom) + 108px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
   </style>
 </head>
 <body>
-  <div id="flash" class="flash"></div>
-  <div id="hud" class="hud">
-    <div class="eyebrow">Generative study</div>
-    <h1>System Drift</h1>
+  <div id="flash" class="flash"></div>  <div id="hud" class="hud">
+    <div class="eyebrow">Interactive study</div>
+    <h1 id="titleLabel">Razzle Dazzle Runways</h1>
     <p class="sub">
-      Click or tap anywhere to generate a new composition. This is an original p5.js system inspired by recurring traits visible across Tony Ingrisano’s work: cartographic overlays, runway and transit geometry, layered grids, cut-paper textures, translucent color, plus newer mode families that pull from his tent and tiger series.
+      Tap the artwork to generate a new image inside the current series. Use the on-screen controls to switch modes on mobile or desktop. The generator is organized around specific Tony Ingrisano bodies of work rather than one generic abstraction style.
     </p>
     <div class="meta">
+      <div class="pill">Mode: <span id="modeLabel">Razzle Dazzle Runways</span></div>
       <div class="pill">Seed: <span id="seedLabel">—</span></div>
-      <div class="pill">Mode: <span id="modeLabel">—</span></div>
       <div class="pill">Palette: <span id="paletteLabel">—</span></div>
       <div class="pill">Density: <span id="densityLabel">—</span></div>
     </div>
-    <div class="footer">
-      Keys: <strong>space</strong> autoplay, <strong>s</strong> save PNG, <strong>h</strong> hide panel, <strong>1–7</strong> switch modes.
-    </div>
-  </div>
-  <div class="corner">click = regenerate</div>  <script>
+    <div class="footer">Tap artwork = regenerate current mode. Buttons below = switch series, autoplay, save, or hide info.</div>
+  </div><button id="noteBtn" class="mini-note" type="button">tap art to regenerate</button>
+
+  <div id="modeDrawer" class="mode-drawer" aria-label="Mode picker"></div>  <div id="controls" class="controls" aria-label="Controls">
+    <button class="ctrl-btn" id="prevBtn" type="button">◀ Prev</button>
+    <button class="ctrl-btn" id="newBtn" type="button">New</button>
+    <button class="ctrl-btn" id="nextBtn" type="button">Next ▶</button>
+    <button class="ctrl-btn" id="modesBtn" type="button">Modes</button>
+    <button class="ctrl-btn" id="autoBtn" type="button">Auto</button>
+    <button class="ctrl-btn" id="saveBtn" type="button">Save</button>
+    <button class="ctrl-btn" id="infoBtn" type="button">Info</button>
+  </div>  <script>
+    let cnv;
     let seed = 1;
     let autoplay = false;
     let lastAuto = 0;
@@ -177,13 +287,13 @@ h1 {
     let densityLabel = '';
 
     const modeNames = [
-      'Transit Collision',
-      'Runway Weave',
-      'Architectural Drift',
-      'Signal Field',
-      'Cartographic Bloom',
-      'Tent Chorus',
-      'Tiger Archive'
+      'Razzle Dazzle Runways',
+      'Aerial Cartography',
+      'Perspective Mapping',
+      'Constellations',
+      'Tent Studies',
+      'Tiger Archive',
+      'Negative Space'
     ];
 
     const palettes = [
@@ -226,18 +336,32 @@ h1 {
         dark: '#13293d',
         lines: ['#4ea8de', '#5390d9', '#80ed99', '#c77dff', '#ef476f'],
         blocks: ['#caf0f8', '#b8c0ff', '#ffcad4', '#caffbf', '#fde4cf']
+      },
+      {
+        name: 'Tiger Heat',
+        bg: '#f5efe3',
+        paper: '#efe0c7',
+        dark: '#1e1a17',
+        lines: ['#f28c28', '#ffb347', '#c95b2b', '#1b1b1b', '#7a3514'],
+        blocks: ['#f3e0b5', '#ffc971', '#e9724c', '#f28f3b', '#ffd6a5']
       }
     ];
 
     function setup() {
       pixelDensity(Math.min(2, window.devicePixelRatio || 1));
-      createCanvas(windowWidth, windowHeight);
+      cnv = createCanvas(windowWidth, windowHeight);
+      cnv.canvas.style.display = 'block';
+      cnv.mousePressed(() => {
+        if (!eventHitsUI(window.event)) generateNew(false);
+        return false;
+      });
+      cnv.touchStarted(() => {
+        generateNew(false);
+        return false;
+      });
       noLoop();
-      generateNew(true);
-    }
-
-    function windowResized() {
-      resizeCanvas(windowWidth, windowHeight);
+      buildModeDrawer();
+      hookButtons();
       generateNew(false);
     }
 
@@ -249,32 +373,97 @@ h1 {
       image(accentLayer, 0, 0);
 
       if (autoplay && millis() - lastAuto > 2200) {
-        generateNew(true);
+        generateNew(false);
       }
     }
 
-    function pick(arr) {
-      return arr[floor(random(arr.length))];
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+      generateNew(false);
     }
 
-    function alphaColor(hex, a) {
-      const c = color(hex);
-      c.setAlpha(a);
-      return c;
+    function hookButtons() {
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const newBtn = document.getElementById('newBtn');
+      const modesBtn = document.getElementById('modesBtn');
+      const autoBtn = document.getElementById('autoBtn');
+      const saveBtn = document.getElementById('saveBtn');
+      const infoBtn = document.getElementById('infoBtn');
+      const noteBtn = document.getElementById('noteBtn');
+      const drawer = document.getElementById('modeDrawer');
+      const hud = document.getElementById('hud');
+      const controls = document.getElementById('controls');
+
+      [controls, drawer, hud, noteBtn].forEach(el => {
+        el.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+        el.addEventListener('pointerdown', e => e.stopPropagation());
+        el.addEventListener('click', e => e.stopPropagation());
+      });
+
+      prevBtn.addEventListener('click', () => stepMode(-1));
+      nextBtn.addEventListener('click', () => stepMode(1));
+      newBtn.addEventListener('click', () => generateNew(false));
+      modesBtn.addEventListener('click', () => {
+        drawer.classList.toggle('open');
+        modesBtn.classList.toggle('active', drawer.classList.contains('open'));
+      });
+      autoBtn.addEventListener('click', () => {
+        autoplay = !autoplay;
+        autoBtn.classList.toggle('active', autoplay);
+        if (autoplay) loop(); else noLoop();
+      });
+      saveBtn.addEventListener('click', () => saveCanvas(`tony-study-${seed}`, 'png'));
+      infoBtn.addEventListener('click', () => hud.classList.toggle('hidden'));
+      noteBtn.addEventListener('click', () => generateNew(false));
+
+      document.addEventListener('click', e => {
+        if (!drawer.contains(e.target) && e.target !== modesBtn) {
+          drawer.classList.remove('open');
+          modesBtn.classList.remove('active');
+        }
+      });
     }
 
-    function lerpPt(a, b, t) {
-      return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) };
+    function buildModeDrawer() {
+      const drawer = document.getElementById('modeDrawer');
+      drawer.innerHTML = '';
+      modeNames.forEach((name, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'mode-chip';
+        btn.type = 'button';
+        btn.textContent = name;
+        btn.addEventListener('click', () => setMode(idx));
+        drawer.appendChild(btn);
+      });
+      refreshModeButtons();
     }
 
-    function generateNew(randomizeMode = true) {
+    function refreshModeButtons() {
+      document.querySelectorAll('.mode-chip').forEach((chip, idx) => {
+        chip.classList.toggle('active', idx === currentMode);
+      });
+    }
+
+    function stepMode(dir) {
+      currentMode = (currentMode + dir + modeNames.length) % modeNames.length;
+      generateNew(false);
+    }
+
+    function setMode(idx) {
+      currentMode = idx;
+      document.getElementById('modeDrawer').classList.remove('open');
+      document.getElementById('modesBtn').classList.remove('active');
+      generateNew(false);
+    }
+
+    function generateNew(randomMode = false) {
+      if (randomMode) currentMode = floor(random(modeNames.length));
       seed = floor(random(1, 9999999));
       randomSeed(seed);
       noiseSeed(seed);
-
-      if (randomizeMode) currentMode = floor(random(modeNames.length));
-      currentPalette = pick(palettes);
-      densityLabel = pick(['Sparse', 'Balanced', 'Dense', 'Overloaded']);
+      currentPalette = paletteForMode(currentMode);
+      densityLabel = pick(['Spare', 'Layered', 'Dense', 'Overbuilt']);
 
       baseLayer = createGraphics(width, height);
       textureLayer = createGraphics(width, height);
@@ -282,130 +471,363 @@ h1 {
       lineLayer = createGraphics(width, height);
       accentLayer = createGraphics(width, height);
 
-      [baseLayer, textureLayer, paintLayer, lineLayer, accentLayer].forEach(g => {
-        g.pixelDensity(1);
-        g.noSmooth();
-      });
+      [baseLayer, textureLayer, paintLayer, lineLayer, accentLayer].forEach(g => g.pixelDensity(1));
 
-      buildBackground(baseLayer, currentPalette);
-      buildPaperTexture(textureLayer, currentPalette);
-      buildCollageFields(paintLayer, currentPalette, currentMode);
-      buildLineSystems(lineLayer, currentPalette, currentMode);
+      buildBackground(baseLayer, currentPalette, currentMode);
+      buildPaperTexture(textureLayer, currentPalette, currentMode);
+      buildPaint(paintLayer, currentPalette, currentMode);
+      buildLines(lineLayer, currentPalette, currentMode);
       buildAccents(accentLayer, currentPalette, currentMode);
-      updateHud();
+      updateHUD();
+      refreshModeButtons();
       pulseFlash();
       lastAuto = millis();
       redraw();
     }
 
-    function buildBackground(g, pal) {
+    function paletteForMode(mode) {
+      if (mode === 5) return palettes[5];
+      if (mode === 6) return random() < 0.4 ? palettes[2] : palettes[0];
+      return pick(palettes.slice(0, 5));
+    }
+
+    function pick(arr) { return arr[floor(random(arr.length))]; }
+    function alphaColor(hex, a) { const c = color(hex); c.setAlpha(a); return c; }
+
+    function buildBackground(g, pal, mode) {
       g.background(pal.bg);
       g.noStroke();
 
       for (let y = 0; y < height; y += 3) {
         const t = y / max(1, height - 1);
-        const c = lerpColor(color(pal.bg), color(pal.paper), pow(t, 0.8));
-        c.setAlpha(85);
+        const c = lerpColor(color(pal.bg), color(pal.paper), pow(t, 0.82));
+        c.setAlpha(86);
         g.fill(c);
         g.rect(0, y, width, 4);
       }
 
-      for (let i = 0; i < 7; i++) {
-        g.fill(alphaColor(pick(pal.blocks), random(14, 32)));
-        g.push();
-        g.translate(random(width), random(height));
-        g.rotate(random(-0.6, 0.6));
-        g.rectMode(CENTER);
-        g.rect(0, 0, random(width * 0.16, width * 0.38), random(height * 0.05, height * 0.14));
-        g.pop();
-      }
-
-      for (let i = 0; i < 4; i++) {
-        g.fill(alphaColor(pal.paper, random(22, 38)));
-        g.ellipse(random(width), random(height), random(width * 0.2, width * 0.65), random(height * 0.12, height * 0.4));
+      if (mode === 3) {
+        for (let i = 0; i < 5; i++) {
+          g.fill(alphaColor(pick(pal.blocks), random(18, 40)));
+          g.ellipse(random(width), random(height), random(width * 0.2, width * 0.55), random(height * 0.15, height * 0.38));
+        }
+      } else {
+        for (let i = 0; i < 6; i++) {
+          g.fill(alphaColor(pick(pal.blocks), random(12, 30)));
+          g.push();
+          g.translate(random(width), random(height));
+          g.rotate(random(-0.7, 0.7));
+          g.rectMode(CENTER);
+          g.rect(0, 0, random(width * 0.14, width * 0.4), random(height * 0.05, height * 0.14));
+          g.pop();
+        }
       }
     }
 
-    function buildPaperTexture(g, pal) {
+    function buildPaperTexture(g, pal, mode) {
       g.clear();
-      const grainCount = floor(width * height * 0.0012);
       g.strokeWeight(1);
-
-      for (let i = 0; i < grainCount; i++) {
-        g.stroke(alphaColor(pal.dark, random(5, 18)));
-        const x = random(width);
-        const y = random(height);
-        g.point(x, y);
+      const grain = floor(width * height * (mode === 4 ? 0.0016 : 0.0011));
+      for (let i = 0; i < grain; i++) {
+        g.stroke(alphaColor(pal.dark, random(4, 14)));
+        g.point(random(width), random(height));
       }
-
-      for (let i = 0; i < 2400; i++) {
-        g.stroke(alphaColor(pick(pal.lines), random(5, 12)));
-        const x = random(width);
-        const y = random(height);
-        const len = random(2, 14);
-        const ang = random([0, HALF_PI, random(-0.8, 0.8)]);
+      for (let i = 0; i < 1800; i++) {
+        g.stroke(alphaColor(pick(pal.lines), random(4, 12)));
+        const x = random(width), y = random(height), len = random(2, 12), ang = random(TWO_PI);
         g.line(x, y, x + cos(ang) * len, y + sin(ang) * len);
       }
+    }
 
+    function buildPaint(g, pal, mode) {
+      g.clear();
       g.noStroke();
-      for (let i = 0; i < 120; i++) {
-        g.fill(alphaColor(pick(pal.blocks), random(6, 14)));
+      if (mode === 0) drawRunwayPaint(g, pal);
+      else if (mode === 1) drawAerialPaint(g, pal);
+      else if (mode === 2) drawPerspectivePaint(g, pal);
+      else if (mode === 3) drawConstellationPaint(g, pal);
+      else if (mode === 4) drawTentPaint(g, pal);
+      else if (mode === 5) drawTigerPaint(g, pal);
+      else if (mode === 6) drawNegativePaint(g, pal);
+    }
+
+    function buildLines(g, pal, mode) {
+      g.clear();
+      if (mode === 0) drawRunwayLines(g, pal);
+      else if (mode === 1) drawAerialLines(g, pal);
+      else if (mode === 2) drawPerspectiveLines(g, pal);
+      else if (mode === 3) drawConstellationLines(g, pal);
+      else if (mode === 4) drawTentLines(g, pal);
+      else if (mode === 5) drawTigerLines(g, pal);
+      else if (mode === 6) drawNegativeLines(g, pal);
+    }
+
+    function buildAccents(g, pal, mode) {
+      g.clear();
+      if (mode !== 5) {
+        for (let i = 0; i < 2; i++) {
+          g.noFill();
+          g.stroke(alphaColor(pal.dark, random(28, 60)));
+          g.strokeWeight(random(1.2, 2.5));
+          g.rect(random(-20, 30), random(-20, 30), width - random(20, 70), height - random(20, 70));
+        }
+      }
+
+      if (mode === 3) {
+        const cx = random(width * 0.28, width * 0.72);
+        const cy = random(height * 0.28, height * 0.72);
+        g.stroke(alphaColor(pick(pal.lines), 120));
+        g.strokeWeight(1.8);
+        for (let i = 0; i < 20; i++) {
+          const a = random(TWO_PI), d = random(70, min(width, height) * 0.26);
+          g.line(cx, cy, cx + cos(a) * d, cy + sin(a) * d);
+        }
+      }
+
+      const vignette = g.drawingContext.createRadialGradient(width * 0.5, height * 0.5, 40, width * 0.5, height * 0.5, max(width, height) * 0.68);
+      vignette.addColorStop(0, 'rgba(255,255,255,0)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.10)');
+      g.drawingContext.fillStyle = vignette;
+      g.noStroke();
+      g.rect(0, 0, width, height);
+    }
+
+    function drawRunwayPaint(g, pal) {
+      for (let i = 0; i < 10; i++) {
+        drawRunwayBand(g, random(width), random(height), random(width * 0.24, width * 0.58), random(16, 42), random(-0.85, 0.85), pick(pal.blocks), random(24, 80));
+      }
+      for (let i = 0; i < 12; i++) drawShard(g, random(width), random(height), random(40, 150), random(24, 90), pick(pal.blocks), random(24, 72));
+    }
+
+    function drawRunwayLines(g, pal) {
+      drawGridField(g, pal, 1.6, 1.6, 28, 80, 26, 72, 0.12);
+      for (let i = 0; i < 18; i++) drawRoute(g, pal, 0.72, 40, 200);
+      for (let i = 0; i < 10; i++) drawArcSystem(g, pal, 60, 260);
+    }
+
+    function drawAerialPaint(g, pal) {
+      for (let i = 0; i < 16; i++) {
+        g.fill(alphaColor(pick(pal.blocks), random(18, 54)));
         g.push();
         g.translate(random(width), random(height));
-        g.rotate(random(TWO_PI));
-        g.rect(0, 0, random(8, 42), random(3, 14));
+        g.rotate(random(-0.3, 0.3));
+        g.rectMode(CENTER);
+        g.rect(0, 0, random(60, 180), random(50, 150));
+        g.pop();
+      }
+      for (let i = 0; i < 6; i++) {
+        g.fill(alphaColor(pick(['#8ac926', '#90be6d', '#a7c957', '#6c9a8b']), random(18, 42)));
+        g.circle(random(width), random(height), random(80, 220));
+      }
+    }
+
+    function drawAerialLines(g, pal) {
+      drawGridField(g, pal, 2.6, 2.1, 22, 52, 22, 48, 0.03);
+      g.noFill();
+      for (let i = 0; i < 5; i++) {
+        g.stroke(alphaColor(pick(pal.lines), random(65, 120)));
+        g.strokeWeight(random(2.4, 4.2));
+        g.beginShape();
+        const yBase = random(height);
+        for (let x = -40; x <= width + 40; x += 40) {
+          g.curveVertex(x, yBase + noise(x * 0.004 + i * 2.7, seed * 0.001) * random(-160, 160));
+        }
+        g.endShape();
+      }
+      for (let i = 0; i < 8; i++) {
+        g.stroke(alphaColor(pick(['#cfe1b9', '#adc178', '#588157']), random(35, 75)));
+        g.strokeWeight(1.2);
+        g.circle(random(width), random(height), random(60, 200));
+      }
+    }
+
+    function drawPerspectivePaint(g, pal) {
+      for (let i = 0; i < 20; i++) drawShard(g, random(width), random(height), random(70, 220), random(35, 110), pick(pal.blocks), random(26, 90));
+      for (let i = 0; i < 5; i++) drawSoftBloom(g, random(width), random(height), random(80, 220), random(0.28, 0.7), pick(pal.blocks));
+    }
+
+    function drawPerspectiveLines(g, pal) {
+      drawGridField(g, pal, 1.8, 1.2, 26, 84, 22, 80, 0.18);
+      g.stroke(alphaColor(pal.dark, 46));
+      g.strokeWeight(1.1);
+      const vanish = { x: random(width * 0.2, width * 0.8), y: random(height * 0.2, height * 0.8) };
+      for (let i = 0; i < 26; i++) {
+        const edge = pick([
+          {x: random(width), y: -20},
+          {x: width + 20, y: random(height)},
+          {x: random(width), y: height + 20},
+          {x: -20, y: random(height)}
+        ]);
+        g.line(edge.x, edge.y, vanish.x + random(-80, 80), vanish.y + random(-80, 80));
+      }
+    }
+
+    function drawConstellationPaint(g, pal) {
+      for (let i = 0; i < 12; i++) drawSoftBloom(g, random(width), random(height), random(90, 260), random(0.22, 0.55), pick(pal.blocks));
+    }
+
+    function drawConstellationLines(g, pal) {
+      const pts = [];
+      g.stroke(alphaColor(pick(pal.lines), 92));
+      g.strokeWeight(1.3);
+      for (let i = 0; i < 90; i++) pts.push({ x: random(width), y: random(height) });
+      pts.forEach(p => {
+        for (let j = 0; j < 2; j++) {
+          const q = pick(pts);
+          if (dist(p.x, p.y, q.x, q.y) < min(width, height) * 0.22) g.line(p.x, p.y, q.x, q.y);
+        }
+      });
+      g.noStroke();
+      pts.forEach(p => {
+        g.fill(alphaColor(pick(pal.lines), random(100, 180)));
+        g.circle(p.x, p.y, random(2, 6));
+      });
+      for (let i = 0; i < 8; i++) drawArcSystem(g, pal, 80, 300);
+    }
+
+    function drawTentPaint(g, pal) {
+      const rows = floor(random(2, 4));
+      for (let row = 0; row < rows; row++) {
+        const y = map(row, 0, max(1, rows - 1), height * 0.32, height * 0.78) + random(-18, 18);
+        const cols = floor(random(3, 7));
+        for (let i = 0; i < cols; i++) {
+          const x = map(i, 0, max(1, cols - 1), width * 0.14, width * 0.86) + random(-24, 24);
+          drawTentForm(g, x, y, random(90, 200), random(70, 150), pick(pal.blocks), pick(pal.lines), pal.dark);
+        }
+      }
+    }
+
+    function drawTentLines(g, pal) {
+      drawGridField(g, pal, 1.2, 1.2, 40, 90, 28, 90, 0.02);
+      g.stroke(alphaColor(pal.dark, 70));
+      g.strokeWeight(1.1);
+      for (let i = 0; i < 7; i++) {
+        const y = random(height * 0.2, height * 0.9);
+        g.line(random(width * 0.05, width * 0.2), y, random(width * 0.8, width * 0.95), y + random(-8, 8));
+      }
+    }
+
+    function drawTigerPaint(g, pal) {
+      for (let i = 0; i < 18; i++) {
+        g.push();
+        g.translate(random(width), random(height));
+        g.rotate(random(-0.9, 0.9));
+        g.noStroke();
+        g.fill(alphaColor(pick(pal.blocks), random(18, 52)));
+        g.rectMode(CENTER);
+        g.rect(0, 0, random(80, 260), random(10, 28), 10);
+        g.pop();
+      }
+      const count = floor(random(2, 5));
+      for (let i = 0; i < count; i++) drawTigerGlyph(g, random(width * 0.2, width * 0.8), random(height * 0.24, height * 0.76), random(110, 240));
+    }
+
+    function drawTigerLines(g, pal) {
+      g.noFill();
+      for (let i = 0; i < 14; i++) {
+        g.stroke(alphaColor(pick(pal.lines), random(70, 120)));
+        g.strokeWeight(random(2, 5));
+        g.arc(random(width), random(height), random(50, 180), random(30, 120), random(TWO_PI), random(TWO_PI));
+      }
+      for (let i = 0; i < 12; i++) drawRoute(g, pal, 0.12, 20, 100);
+    }
+
+    function drawNegativePaint(g, pal) {
+      for (let i = 0; i < 18; i++) {
+        g.fill(alphaColor(pick(pal.blocks), random(22, 58)));
+        g.push();
+        g.translate(random(width), random(height));
+        g.rotate(random(-0.25, 0.25));
+        g.rectMode(CENTER);
+        g.rect(0, 0, random(70, 240), random(18, 48));
+        g.pop();
+      }
+      for (let i = 0; i < 5; i++) {
+        g.fill(alphaColor('#ffffff', random(28, 58)));
+        g.rect(random(width * 0.05, width * 0.6), random(height * 0.1, height * 0.85), random(80, 260), random(16, 34));
+      }
+    }
+
+    function drawNegativeLines(g, pal) {
+      drawGridField(g, pal, 1.2, 1.4, 50, 110, 40, 110, 0.04);
+      g.stroke(alphaColor(pal.dark, 64));
+      g.strokeWeight(1.2);
+      const fragments = ['E','M','N','A','T','U','R','E','H','O','M','S'];
+      for (let i = 0; i < 24; i++) {
+        g.push();
+        g.translate(random(width), random(height));
+        g.rotate(random(-0.35, 0.35));
+        g.textAlign(CENTER, CENTER);
+        g.textSize(random(24, 90));
+        g.fill(alphaColor('#ffffff', random(40, 88)));
+        g.noStroke();
+        g.text(pick(fragments), 0, 0);
         g.pop();
       }
     }
 
-    function buildCollageFields(g, pal, mode) {
-      g.clear();
+    function drawGridField(g, pal, sxMul, syMul, sxMin, sxMax, syMin, syMax, rot) {
+      g.push();
+      g.translate(random(-width * 0.1, width * 0.1), random(-height * 0.1, height * 0.1));
+      g.rotate(random(-rot, rot));
+      g.stroke(alphaColor(pick(pal.lines), random(20, 54)));
+      g.strokeWeight(random(0.8, 1.8));
+      const sx = random(sxMin, sxMax) * sxMul * 0.5;
+      const sy = random(syMin, syMax) * syMul * 0.5;
+      for (let x = -width * 0.2; x < width * 1.2; x += sx) g.line(x, -height * 0.2, x, height * 1.2);
+      for (let y = -height * 0.2; y < height * 1.2; y += sy) g.line(-width * 0.2, y, width * 1.2, y);
+      g.pop();
+    }
+
+    function drawRoute(g, pal, orthBias, dMin, dMax) {
+      let p = { x: random(-20, width + 20), y: random(-20, height + 20) };
+      g.noFill();
+      g.stroke(alphaColor(pick(pal.lines), random(72, 170)));
+      g.strokeWeight(random(0.9, 3.6));
+      g.beginShape();
+      g.vertex(p.x, p.y);
+      for (let i = 0; i < floor(random(5, 12)); i++) {
+        let a;
+        if (random() < orthBias) a = pick([0, HALF_PI, PI, PI + HALF_PI, QUARTER_PI, PI + QUARTER_PI, PI - QUARTER_PI, TWO_PI - QUARTER_PI]);
+        else a = random(TWO_PI);
+        const d = random(dMin, dMax);
+        p = { x: p.x + cos(a) * d, y: p.y + sin(a) * d };
+        g.vertex(p.x, p.y);
+      }
+      g.endShape();
+    }
+
+    function drawArcSystem(g, pal, minR, maxR) {
+      g.push();
+      g.translate(random(width), random(height));
+      g.rotate(random(TWO_PI));
+      g.noFill();
+      g.stroke(alphaColor(pick(pal.lines), random(34, 110)));
+      g.strokeWeight(random(0.9, 2.2));
+      for (let i = 0; i < floor(random(2, 5)); i++) {
+        const w = random(minR, maxR) * (i + 1) * 0.4;
+        const h = random(minR * 0.6, maxR * 0.9) * (i + 1) * 0.4;
+        const start = random(TWO_PI), end = start + random(QUARTER_PI * 0.8, PI * 1.35);
+        g.arc(0, 0, w, h, start, end);
+      }
+      g.pop();
+    }
+
+    function drawRunwayBand(g, x, y, len, thick, ang, fillHex, a) {
+      g.push();
+      g.translate(x, y);
+      g.rotate(ang);
+      g.rectMode(CENTER);
       g.noStroke();
-
-      const stripCount = [7, 12, 9, 18, 10, 14, 8][mode];
-      for (let i = 0; i < stripCount; i++) {
-        g.push();
-        g.translate(random(width), random(height));
-        g.rotate(random(-1.1, 1.1));
-        g.fill(alphaColor(pick(pal.blocks), random(38, 84)));
-        g.rectMode(CENTER);
-        g.rect(0, 0, random(width * 0.14, width * 0.42), random(18, height * 0.1));
-        g.pop();
+      g.fill(alphaColor(fillHex, a));
+      g.rect(0, 0, len, thick, thick * 0.2);
+      const notchCount = floor(random(5, 12));
+      for (let i = 0; i < notchCount; i++) {
+        const t = map(i, 0, notchCount - 1, -len * 0.42, len * 0.42);
+        g.fill(alphaColor('#ffffff', random(34, 90)));
+        g.rect(t, 0, len * 0.035, thick * random(0.3, 0.9), 2);
       }
-
-      const shardCount = [18, 12, 24, 16, 20, 10, 16][mode];
-      for (let i = 0; i < shardCount; i++) {
-        drawShard(g, random(width), random(height), random(40, 180), random(24, 110), pick(pal.blocks), random(30, 90));
-      }
-
-      if (mode === 1 || mode === 3) {
-        for (let i = 0; i < 8; i++) {
-          drawRunwayBand(g, random(width), random(height), random(width * 0.24, width * 0.55), random(20, 42), random(-0.85, 0.85), pick(pal.blocks), random(24, 70));
-        }
-      }
-
-      if (mode === 0 || mode === 4) {
-        for (let i = 0; i < 8; i++) {
-          drawSoftBloom(g, random(width), random(height), random(90, 220), random(0.25, 0.65), pick(pal.blocks));
-        }
-      }
-
-      if (mode === 2) {
-        g.stroke(alphaColor(pal.dark, 20));
-        g.strokeWeight(1.2);
-        for (let i = 0; i < 14; i++) {
-          const x = random(width);
-          g.line(x, 0, x + random(-80, 80), height);
-        }
-      }
-
-      if (mode === 5) {
-        drawTentField(g, pal);
-      }
-
-      if (mode === 6) {
-        drawTigerField(g);
-      }
+      g.pop();
     }
 
     function drawShard(g, x, y, w, h, fillHex, a) {
@@ -420,24 +842,6 @@ h1 {
       g.vertex(w * 0.24, h * 0.46);
       g.vertex(-w * 0.4, h * 0.28);
       g.endShape(CLOSE);
-      g.pop();
-    }
-
-    function drawRunwayBand(g, x, y, len, thick, ang, fillHex, a) {
-      g.push();
-      g.translate(x, y);
-      g.rotate(ang);
-      g.rectMode(CENTER);
-      g.noStroke();
-      g.fill(alphaColor(fillHex, a));
-      g.rect(0, 0, len, thick, thick * 0.2);
-
-      const notchCount = floor(random(5, 12));
-      for (let i = 0; i < notchCount; i++) {
-        const t = map(i, 0, notchCount - 1, -len * 0.42, len * 0.42);
-        g.fill(alphaColor('#ffffff', random(35, 90)));
-        g.rect(t, 0, len * 0.035, thick * random(0.3, 0.9), 2);
-      }
       g.pop();
     }
 
@@ -456,118 +860,63 @@ h1 {
       g.pop();
     }
 
-    function drawTentField(g, pal) {
-      const rows = floor(random(2, 4));
-      for (let row = 0; row < rows; row++) {
-        const y = map(row, 0, max(1, rows - 1), height * 0.32, height * 0.78) + random(-24, 24);
-        const cols = floor(random(3, 7));
-        for (let i = 0; i < cols; i++) {
-          const x = map(i, 0, max(1, cols - 1), width * 0.14, width * 0.86) + random(-28, 28);
-          drawTentForm(g, x, y, random(90, 200), random(70, 150), pick(pal.blocks), pick(pal.lines), pal.dark);
-        }
-      }
-    }
-
     function drawTentForm(g, x, y, w, h, fillHex, lineHex, darkHex) {
       g.push();
       g.translate(x, y);
       g.rotate(random(-0.08, 0.08));
-
       g.noStroke();
-      g.fill(alphaColor(fillHex, random(18, 34)));
+      g.fill(alphaColor(fillHex, random(18, 32)));
       g.rectMode(CENTER);
-      g.rect(0, -h * 0.24, w * 0.9, h * 1.2);
-
-      g.stroke(alphaColor(lineHex, random(95, 170)));
+      g.rect(0, -h * 0.24, w * 0.88, h * 1.15);
+      g.stroke(alphaColor(lineHex, random(96, 170)));
       g.strokeWeight(random(1.2, 2.2));
-      g.fill(alphaColor(fillHex, random(58, 120)));
+      g.fill(alphaColor(fillHex, random(60, 120)));
       g.beginShape();
       g.vertex(-w * 0.5, 0);
-      g.vertex(-w * 0.1, -h * random(0.82, 1.0));
+      g.vertex(-w * 0.08, -h * random(0.82, 1.0));
       g.vertex(w * 0.5, 0);
       g.vertex(w * 0.34, 0);
       g.vertex(0, -h * random(0.62, 0.82));
       g.vertex(-w * 0.34, 0);
       g.endShape(CLOSE);
-
-      g.stroke(alphaColor(darkHex, random(30, 75)));
+      g.stroke(alphaColor(darkHex, random(28, 74)));
       g.line(-w * 0.5, 0, w * 0.5, 0);
-      g.line(-w * 0.1, -h * 0.9, 0, -h * 0.72);
+      g.line(-w * 0.08, -h * 0.9, 0, -h * 0.72);
       g.line(0, -h * 0.72, w * 0.5, 0);
       g.line(0, -h * 0.72, 0, 0);
-
       for (let i = 0; i < 5; i++) {
         const yy = map(i, 0, 4, -h * 0.75, -h * 0.08);
         g.stroke(alphaColor(pick([fillHex, lineHex, darkHex]), random(18, 42)));
         g.line(-w * 0.22, yy, w * 0.22, yy + random(-3, 3));
       }
-
-      g.stroke(alphaColor(lineHex, random(20, 50)));
-      g.line(-w * 0.38, 0, -w * 0.55, h * 0.12);
-      g.line(w * 0.38, 0, w * 0.55, h * 0.12);
       g.pop();
     }
 
-    function drawTigerField(g) {
-      const tigerPalette = ['#f28c28', '#ffb347', '#1b1b1b', '#f3e0b5', '#c95b2b'];
-
-      for (let i = 0; i < 18; i++) {
-        g.push();
-        g.translate(random(width), random(height));
-        g.rotate(random(-0.9, 0.9));
-        g.noStroke();
-        g.fill(alphaColor(pick(tigerPalette), random(18, 52)));
-        g.rectMode(CENTER);
-        g.rect(0, 0, random(80, 260), random(10, 28), 10);
-        g.pop();
-      }
-
-      const tigerCount = floor(random(2, 5));
-      for (let i = 0; i < tigerCount; i++) {
-        drawTigerGlyph(g, random(width * 0.2, width * 0.8), random(height * 0.24, height * 0.76), random(110, 240), tigerPalette);
-      }
-    }
-
-    function drawTigerGlyph(g, x, y, s, tigerPalette) {
+    function drawTigerGlyph(g, x, y, s) {
       g.push();
       g.translate(x, y);
       g.rotate(random(-0.12, 0.12));
-
       g.noStroke();
-      g.fill(alphaColor('#f3e0b5', random(100, 155)));
+      g.fill(alphaColor('#f3e0b5', random(104, 155)));
       g.ellipse(0, 0, s * 0.78, s * 0.7);
-
-      g.fill(alphaColor('#f28c28', random(80, 145)));
+      g.fill(alphaColor('#f28c28', random(84, 145)));
       g.ellipse(-s * 0.22, -s * 0.24, s * 0.22, s * 0.22);
       g.ellipse(s * 0.22, -s * 0.24, s * 0.22, s * 0.22);
       g.ellipse(0, 0, s * 0.7, s * 0.62);
-
-      g.fill(alphaColor('#1b1b1b', random(110, 180)));
+      g.fill(alphaColor('#1b1b1b', random(120, 185)));
       for (let i = -2; i <= 2; i++) {
-        const xx = i * s * 0.08;
-        g.rect(xx, -s * 0.18, s * 0.035, s * random(0.15, 0.26), 6);
+        g.rect(i * s * 0.08, -s * 0.18, s * 0.035, s * random(0.15, 0.26), 6);
       }
-      g.push();
-      g.translate(-s * 0.16, -s * 0.02);
-      g.rotate(-0.45);
-      g.rect(0, 0, s * 0.04, s * 0.18, 6);
-      g.pop();
-      g.push();
-      g.translate(s * 0.16, -s * 0.02);
-      g.rotate(0.45);
-      g.rect(0, 0, s * 0.04, s * 0.18, 6);
-      g.pop();
-
+      g.push(); g.translate(-s * 0.16, -s * 0.02); g.rotate(-0.45); g.rect(0, 0, s * 0.04, s * 0.18, 6); g.pop();
+      g.push(); g.translate(s * 0.16, -s * 0.02); g.rotate(0.45); g.rect(0, 0, s * 0.04, s * 0.18, 6); g.pop();
       g.fill(alphaColor('#ffffff', 190));
       g.ellipse(-s * 0.15, -s * 0.02, s * 0.16, s * 0.12);
       g.ellipse(s * 0.15, -s * 0.02, s * 0.16, s * 0.12);
       g.fill(alphaColor('#1b1b1b', 220));
       g.ellipse(-s * 0.15, -s * 0.02, s * 0.055, s * 0.055);
       g.ellipse(s * 0.15, -s * 0.02, s * 0.055, s * 0.055);
-
       g.fill(alphaColor('#c95b2b', 180));
       g.triangle(0, s * 0.06, -s * 0.07, s * 0.16, s * 0.07, s * 0.16);
-
       g.stroke(alphaColor('#1b1b1b', 130));
       g.strokeWeight(1.2);
       for (let i = 0; i < 3; i++) {
@@ -578,186 +927,10 @@ h1 {
       g.pop();
     }
 
-    function buildLineSystems(g, pal, mode) {
-      g.clear();
-      g.blendMode(BLEND);
-
-      const gridSets = [2, 1, 3, 2, 2, 1, 1][mode];
-      for (let i = 0; i < gridSets; i++) drawGridField(g, pal, mode, i);
-
-      const routeCount = [24, 14, 18, 22, 26, 12, 18][mode];
-      for (let i = 0; i < routeCount; i++) drawRoute(g, pal, mode);
-
-      const arcCount = [10, 6, 8, 10, 12, 6, 8][mode];
-      for (let i = 0; i < arcCount; i++) drawArcSystem(g, pal, mode);
-
-      const nodeCount = [80, 42, 56, 72, 90, 34, 58][mode];
-      for (let i = 0; i < nodeCount; i++) {
-        const c = alphaColor(pick(pal.lines), random(90, 170));
-        g.noStroke();
-        g.fill(c);
-        g.circle(random(width), random(height), random(1.4, 5.2));
-      }
-    }
-
-    function drawGridField(g, pal, mode, idx) {
-      g.push();
-      g.translate(random(-width * 0.12, width * 0.12), random(-height * 0.12, height * 0.12));
-      g.rotate(random([-0.22, -0.12, 0, 0.12, 0.22, random(-0.4, 0.4)]));
-      g.stroke(alphaColor(pick(pal.lines), random(22, 60)));
-      g.strokeWeight(random(0.8, 2.1));
-
-      const sx = random(28, 90);
-      const sy = random(22, 80);
-      for (let x = -width * 0.2; x < width * 1.2; x += sx) g.line(x, -height * 0.2, x, height * 1.2);
-      for (let y = -height * 0.2; y < height * 1.2; y += sy) g.line(-width * 0.2, y, width * 1.2, y);
-
-      if (mode === 2 || idx === 0) {
-        g.stroke(alphaColor(pal.dark, random(26, 54)));
-        for (let x = -width * 0.1; x < width * 1.1; x += sx * random(2.5, 4.2)) {
-          g.line(x, -height * 0.1, x + random(-100, 100), height * 1.1);
-        }
-      }
-      g.pop();
-    }
-
-    function drawRoute(g, pal, mode) {
-      const steps = floor(random(5, 14));
-      let p = {
-        x: random(-width * 0.05, width * 1.05),
-        y: random(-height * 0.05, height * 1.05)
-      };
-
-      const orthogonalBias = mode === 2 ? 0.8 : mode === 5 ? 0.68 : mode === 0 ? 0.55 : mode === 6 ? 0.2 : 0.35;
-      g.noFill();
-      g.stroke(alphaColor(pick(pal.lines), random(70, 175)));
-      g.strokeWeight(random(0.9, 3.8));
-      g.beginShape();
-      g.vertex(p.x, p.y);
-
-      for (let i = 0; i < steps; i++) {
-        const axisMode = random() < orthogonalBias;
-        let a;
-        if (axisMode) {
-          a = pick([0, HALF_PI, PI, PI + HALF_PI, QUARTER_PI, PI + QUARTER_PI, PI - QUARTER_PI, TWO_PI - QUARTER_PI]);
-        } else {
-          a = random(TWO_PI);
-        }
-        const d = random(30, mode === 1 ? 210 : 160);
-        p = { x: p.x + cos(a) * d, y: p.y + sin(a) * d };
-        g.vertex(p.x, p.y);
-      }
-      g.endShape();
-
-      if (random() < 0.7) {
-        g.fill(alphaColor(pick(pal.blocks), random(50, 120)));
-        g.noStroke();
-        g.circle(p.x, p.y, random(5, 16));
-      }
-    }
-
-    function drawArcSystem(g, pal, mode) {
-      g.push();
-      const x = random(width);
-      const y = random(height);
-      g.translate(x, y);
-      g.rotate(random(TWO_PI));
-      g.noFill();
-      g.stroke(alphaColor(pick(pal.lines), random(40, 120)));
-      g.strokeWeight(random(0.9, 2.5));
-      const rings = floor(random(2, 6));
-      for (let i = 0; i < rings; i++) {
-        const w = random(40, mode === 4 ? 320 : 220) * (i + 1) * 0.45;
-        const h = random(30, 180) * (i + 1) * 0.45;
-        const start = random(TWO_PI);
-        const end = start + random(QUARTER_PI * 0.8, PI * 1.4);
-        g.arc(0, 0, w, h, start, end);
-      }
-      g.pop();
-    }
-
-    function buildAccents(g, pal, mode) {
-      g.clear();
-
-      if (mode === 3) {
-        for (let i = 0; i < 7; i++) {
-          g.push();
-          g.translate(random(width), random(height));
-          g.rotate(random([-0.45, -0.22, 0.22, 0.45]));
-          g.noStroke();
-          g.fill(alphaColor(pick(pal.lines), random(50, 90)));
-          const stripeH = random(10, 18);
-          for (let y = -70; y <= 70; y += stripeH * 1.5) {
-            g.rect(-150, y, 300, stripeH);
-          }
-          g.pop();
-        }
-      }
-
-      if (mode === 1) {
-        for (let i = 0; i < 5; i++) {
-          drawRunwayBand(g, random(width), random(height), random(width * 0.32, width * 0.65), random(12, 28), random(-0.9, 0.9), pick(pal.lines), random(36, 88));
-        }
-      }
-
-      if (mode === 5) {
-        g.stroke(alphaColor(pal.dark, 70));
-        g.strokeWeight(1.2);
-        for (let i = 0; i < 6; i++) {
-          const y = random(height * 0.2, height * 0.9);
-          g.line(random(width * 0.05, width * 0.2), y, random(width * 0.8, width * 0.95), y + random(-10, 10));
-        }
-      }
-
-      if (mode === 6) {
-        const tigerPalette = ['#f28c28', '#ffb347', '#1b1b1b', '#f3e0b5', '#c95b2b'];
-        for (let i = 0; i < 12; i++) {
-          g.noFill();
-          g.stroke(alphaColor(pick(tigerPalette), random(55, 110)));
-          g.strokeWeight(random(2, 5));
-          g.arc(random(width), random(height), random(50, 180), random(30, 120), random(TWO_PI), random(TWO_PI));
-        }
-      }
-
-      if (mode === 4 || random() < 0.55) {
-        const cx = random(width * 0.25, width * 0.75);
-        const cy = random(height * 0.25, height * 0.75);
-        g.stroke(alphaColor(pick(pal.lines), 140));
-        g.strokeWeight(random(1.3, 2.8));
-        for (let i = 0; i < 18; i++) {
-          const a = random(TWO_PI);
-          const d = random(80, min(width, height) * 0.28);
-          const ex = cx + cos(a) * d;
-          const ey = cy + sin(a) * d;
-          g.line(cx, cy, ex, ey);
-          g.noStroke();
-          g.fill(alphaColor(pick(pal.blocks), random(60, 120)));
-          g.circle(ex, ey, random(4, 12));
-          g.stroke(alphaColor(pick(pal.lines), 120));
-        }
-        g.noStroke();
-        g.fill(alphaColor(pick(pal.blocks), 130));
-        g.circle(cx, cy, random(18, 40));
-      }
-
-      g.noFill();
-      for (let i = 0; i < 3; i++) {
-        g.stroke(alphaColor(pal.dark, random(30, 70)));
-        g.strokeWeight(random(1.2, 2.6));
-        g.rect(random(-20, 40), random(-20, 40), width - random(20, 80), height - random(20, 80));
-      }
-
-      const vignette = g.drawingContext.createRadialGradient(width * 0.5, height * 0.5, 50, width * 0.5, height * 0.5, max(width, height) * 0.68);
-      vignette.addColorStop(0, 'rgba(255,255,255,0)');
-      vignette.addColorStop(1, 'rgba(0,0,0,0.10)');
-      g.drawingContext.fillStyle = vignette;
-      g.noStroke();
-      g.rect(0, 0, width, height);
-    }
-
-    function updateHud() {
+    function updateHUD() {
       document.getElementById('seedLabel').textContent = seed;
       document.getElementById('modeLabel').textContent = modeNames[currentMode];
+      document.getElementById('titleLabel').textContent = modeNames[currentMode];
       document.getElementById('paletteLabel').textContent = currentPalette.name;
       document.getElementById('densityLabel').textContent = densityLabel;
     }
@@ -768,34 +941,22 @@ h1 {
       setTimeout(() => el.classList.remove('on'), 120);
     }
 
-    function mousePressed() {
-      generateNew(true);
-      return false;
-    }
-
-    function touchStarted() {
-      generateNew(true);
-      return false;
-    }
-
     function keyPressed() {
-      if (key === ' ' ) {
+      if (key === ' ') {
         autoplay = !autoplay;
+        document.getElementById('autoBtn').classList.toggle('active', autoplay);
         if (autoplay) loop(); else noLoop();
       }
+      if (key === 's' || key === 'S') saveCanvas(`tony-study-${seed}`, 'png');
+      if (key === 'h' || key === 'H') document.getElementById('hud').classList.toggle('hidden');
+      if (keyCode === LEFT_ARROW) stepMode(-1);
+      if (keyCode === RIGHT_ARROW) stepMode(1);
+      if (['1','2','3','4','5','6','7'].includes(key)) setMode(int(key) - 1);
+    }
 
-      if (key === 's' || key === 'S') {
-        saveCanvas(`system-drift-${seed}`, 'png');
-      }
-
-      if (key === 'h' || key === 'H') {
-        document.getElementById('hud').classList.toggle('hidden');
-      }
-
-      if (['1', '2', '3', '4', '5'].includes(key)) {
-        currentMode = int(key) - 1;
-        generateNew(false);
-      }
+    function eventHitsUI(evt) {
+      if (!evt || !evt.target) return false;
+      return !!evt.target.closest('.controls, .mode-drawer, .hud, .mini-note');
     }
   </script></body>
 </html>
